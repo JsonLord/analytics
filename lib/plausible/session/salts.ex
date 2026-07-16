@@ -26,7 +26,11 @@ defmodule Plausible.Session.Salts do
   end
 
   def refresh(name, now) do
-    salts = Repo.all(from s in "salts", select: s.salt, order_by: [desc: s.id], limit: 2)
+    salts = try do
+      Repo.all(from s in "salts", select: s.salt, order_by: [desc: s.id], limit: 2)
+    rescue
+      _ -> []
+    end
 
     state =
       case salts do
@@ -79,7 +83,11 @@ defmodule Plausible.Session.Salts do
 
   defp generate_and_persist_new_salt(now) do
     salt = :crypto.strong_rand_bytes(16)
-    Repo.insert_all("salts", [%{salt: salt, inserted_at: now}])
+    try do
+      Repo.insert_all("salts", [%{salt: salt, inserted_at: now}])
+    rescue
+      _ -> :ok
+    end
     salt
   end
 
@@ -87,6 +95,10 @@ defmodule Plausible.Session.Salts do
     h48_ago =
       DateTime.shift(now, hour: -48)
 
-    Repo.delete_all(from s in "salts", where: s.inserted_at < ^h48_ago)
+    try do
+      Repo.delete_all(from s in "salts", where: s.inserted_at < ^h48_ago)
+    rescue
+      _ -> :ok
+    end
   end
 end

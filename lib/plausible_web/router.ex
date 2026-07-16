@@ -417,6 +417,11 @@ defmodule PlausibleWeb.Router do
   end
 
   scope "/", PlausibleWeb do
+    get "/health", Api.SystemController, :liveness
+    get "/api-docs", Api.SystemController, :api_docs
+  end
+
+  scope "/", PlausibleWeb do
     pipe_through [:browser, :csrf]
 
     scope alias: Live, assigns: %{connect_live_socket: true} do

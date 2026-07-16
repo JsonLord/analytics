@@ -79,8 +79,9 @@ RUN mkdir -p /var/lib/plausible && chmod ugo+rw -R /var/lib/plausible
 USER 999
 WORKDIR /app
 ENV LISTEN_IP=0.0.0.0
+ENV PORT=7860
 ENTRYPOINT ["/entrypoint.sh"]
-EXPOSE 8000
+EXPOSE 7860
 ENV DEFAULT_DATA_DIR=/var/lib/plausible
 VOLUME /var/lib/plausible
 CMD ["run"]

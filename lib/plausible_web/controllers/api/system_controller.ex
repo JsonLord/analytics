@@ -22,6 +22,48 @@ defmodule PlausibleWeb.Api.SystemController do
     json(conn, %{ok: true})
   end
 
+  def api_docs(conn, _params) do
+    json(conn, %{
+      endpoints: [
+        %{
+          method: "GET",
+          path: "/health",
+          purpose: "Returns HTTP 200 when the app is ready for Hugging Face Space transition from starting to running."
+        },
+        %{
+          method: "GET",
+          path: "/api-docs",
+          purpose: "Exposes documentation of all available API endpoints."
+        },
+        %{
+          method: "POST",
+          path: "/api/event",
+          purpose: "Send analytical events directly via the API."
+        },
+        %{
+          method: "GET",
+          path: "/api/v1/stats/realtime/visitors",
+          purpose: "Get current number of active visitors on a site."
+        },
+        %{
+          method: "GET",
+          path: "/api/v1/stats/aggregate",
+          purpose: "Retrieve aggregate metrics over a given period."
+        },
+        %{
+          method: "GET",
+          path: "/api/v1/stats/breakdown",
+          purpose: "Break down stats by metrics like browser, country, etc."
+        },
+        %{
+          method: "GET",
+          path: "/api/v1/stats/timeseries",
+          purpose: "Get metrics over time at regular intervals."
+        }
+      ]
+    })
+  end
+
   @task_timeout 15_000
   @critical_caches [
     Plausible.Site.Cache,
