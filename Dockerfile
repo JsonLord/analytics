@@ -87,8 +87,11 @@ COPY --from=clickhouse_binary \
 RUN mkdir -p /lib64 \
   && ln -s /lib/ld-2.35.so /lib64/ld-linux-x86-64.so.2 \
   && ln -s /usr/bin/clickhouse /usr/bin/clickhouse-server \
-  && ln -s /usr/bin/clickhouse /usr/bin/clickhouse-client
-COPY --chmod=444 ./rel/clickhouse/config.xml ./rel/clickhouse/users.xml /etc/clickhouse-server/
+  && ln -s /usr/bin/clickhouse /usr/bin/clickhouse-client \
+  && mkdir -p /etc/clickhouse-server \
+  && chown -R plausible:nogroup /etc/clickhouse-server
+COPY --chmod=644 ./rel/clickhouse/config.xml ./rel/clickhouse/users.xml /etc/clickhouse-server/
+RUN chown -R plausible:nogroup /etc/clickhouse-server
 
 COPY --from=buildcontainer --chmod=555 /app/_build/${MIX_ENV}/rel/plausible /app
 COPY --chmod=755 ./rel/docker-entrypoint.sh /entrypoint.sh
