@@ -53,6 +53,10 @@ WORKDIR /app
 COPY rel rel
 RUN mix release plausible
 
+#### Embedded ClickHouse binary, for self-contained deployments (e.g.
+#### Hugging Face Spaces) that have no external ClickHouse instance.
+FROM clickhouse/clickhouse-server:26.3-alpine AS clickhouse_binary
+
 # Main Docker Image
 FROM alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
 LABEL maintainer="plausible.io <hello@plausible.io>"
@@ -66,11 +70,29 @@ ENV MIX_ENV=$MIX_ENV
 RUN adduser -S -H -u 999 -G nogroup plausible
 
 RUN apk upgrade --no-cache
-RUN apk add --no-cache openssl ncurses libstdc++ libgcc ca-certificates \
+RUN apk add --no-cache openssl ncurses libstdc++ libgcc ca-certificates tini \
+  postgresql15 postgresql15-contrib \
   && if [ "$MIX_ENV" = "ce" ]; then apk add --no-cache certbot; fi
+
+# Embedded, open-source ClickHouse server used by rel/self_contained_db.sh
+# when no external CLICKHOUSE_DATABASE_URL is configured. The upstream
+# "-alpine" image is glibc-linked (unlike this musl-based base), so its
+# glibc runtime is copied over alongside the binary.
+COPY --from=clickhouse_binary /usr/bin/clickhouse /usr/bin/clickhouse
+COPY --from=clickhouse_binary \
+  /lib/ld-2.35.so /lib/libc.so.6 /lib/libdl.so.2 /lib/libm.so.6 \
+  /lib/libnss_dns.so.2 /lib/libnss_files.so.2 /lib/libpthread.so.0 \
+  /lib/libresolv.so.2 /lib/librt.so.1 \
+  /lib/
+RUN mkdir -p /lib64 \
+  && ln -s /lib/ld-2.35.so /lib64/ld-linux-x86-64.so.2 \
+  && ln -s /usr/bin/clickhouse /usr/bin/clickhouse-server \
+  && ln -s /usr/bin/clickhouse /usr/bin/clickhouse-client
+COPY --chmod=444 ./rel/clickhouse/config.xml ./rel/clickhouse/users.xml /etc/clickhouse-server/
 
 COPY --from=buildcontainer --chmod=555 /app/_build/${MIX_ENV}/rel/plausible /app
 COPY --chmod=755 ./rel/docker-entrypoint.sh /entrypoint.sh
+COPY --chmod=755 ./rel/self_contained_db.sh /self_contained_db.sh
 
 # we need to allow "others" access to app folder, because
 # docker container can be started with arbitrary uid
@@ -79,8 +101,9 @@ RUN mkdir -p /var/lib/plausible && chmod ugo+rw -R /var/lib/plausible
 USER 999
 WORKDIR /app
 ENV LISTEN_IP=0.0.0.0
-ENTRYPOINT ["/entrypoint.sh"]
-EXPOSE 8000
+ENV PORT=7860
+ENTRYPOINT ["/sbin/tini", "--", "/entrypoint.sh"]
+EXPOSE 7860
 ENV DEFAULT_DATA_DIR=/var/lib/plausible
 VOLUME /var/lib/plausible
 CMD ["run"]
