@@ -522,13 +522,13 @@ end
 
 db_cacertfile = get_var_from_path_or_env(config_dir, "DATABASE_CACERTFILE")
 %URI{host: db_host} = db_uri = URI.parse(db_url)
-db_socket_dir? = String.starts_with?(db_host, "%2F") or db_host == ""
+db_socket_dir? = is_nil(db_host) or db_host == "" or String.starts_with?(db_host, "%2F")
 
 if db_socket_dir? do
   [database] = String.split(db_uri.path, "/", trim: true)
 
   socket_dir =
-    if db_host == "" do
+    if db_host == "" or is_nil(db_host) do
       db_host = (db_uri.query || "") |> URI.decode_query() |> Map.get("host")
       db_host || raise ArgumentError, "DATABASE_URL=#{db_url} doesn't include host info"
     else
